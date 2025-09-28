@@ -7,8 +7,8 @@
 ```
 lab1/
 ├── Makefile              # 构建配置
-├── kernel.ld             # 内存布局
 └── kernel/
+    ├── kernel.ld         # 内存布局
     ├── entry.S           # 汇编启动
     ├── start.c           # 主逻辑
     ├── uart.c            # 串口驱动
