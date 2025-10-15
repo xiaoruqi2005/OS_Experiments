@@ -296,7 +296,7 @@ void start(void) {
 **6. 构建系统实现（Makefile）**
 
 参照xv6的makefile文件，删去了冗余部分，仅保留实验一相关的核心内容。
-```Makefile
+```Makefile {.line-numbers}
 K=kernel
 
 # 最小内核所需的目标文件

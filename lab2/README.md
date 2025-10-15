@@ -211,7 +211,7 @@ void print_number(int num, int base, int sign) {
 
 
 * **关键代码2：格式解析状态机。** 用状态机模式实现格式解析，结构清晰易扩展。
-```c
+```c {.line-numbers}
 int printf(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -239,7 +239,7 @@ int printf(const char *fmt, ...) {
 ```
 
 * **关键代码3：ANSI清屏与光标控制。** 遵循ANSI标准化实现，确保终端兼容性。
-```c
+```c {.line-numbers}
 void clear_screen(void) {
     uart_puts("\033[2J");  // ED命令：清除整个屏幕
     uart_puts("\033[H");   // CUP命令：光标归位
@@ -257,7 +257,7 @@ int printf_color(color_t color, const char *fmt, ...) {
 ```
 
 * **关键代码4：硬件寄存器精确操作。** 状态检查确保传输可靠性，换行符转换提升兼容性。
-```c
+```c {.line-numbers}
 void uart_putc(char c) {
     while ((REG(UART_LSR) & LSR_TX_READY) == 0);  // 等待就绪
     REG(UART_THR) = c;  // 写入发送寄存器
