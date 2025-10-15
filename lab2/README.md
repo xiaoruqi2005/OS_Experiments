@@ -39,7 +39,7 @@
   代码中统一将有符号数转为无符号数处理，避免符号位干扰，转换完成后再统一添加负号。此外，支持 sign 参数控制是否进行符号处理（%u 不需要）
 
 #### 2.1.2 理解分层设计：
-![alt text](image.png)
+![alt text](lab2_resource/image.png)
 * ***每一层的职责是什么？*** 
   
   * 格式化层：负责解析%d、%s等格式符，将数字转换为字符串，处理可变参数。它完成数据到文本的转换，但不关心输出目标。
@@ -271,34 +271,34 @@ void uart_putc(char c) {
 #### 2.2.3 实验测试与结果
 
   终端输入`make`指令进行编译，之后输入`make run`运行，进入如下的开始测试界面。
-  ![alt text](初始.png)
+  ![alt text](lab2_resource/初始.png)
   **1. 基础功能测试：**
 
    验证printf基本格式化功能，包括整数、字符串、字符、十六进制等格式符的正确解析和输出。测试涵盖正数、负数、零值等常规情况。  
    输出结果如下图：
-   ![alt text](测试1_basic.png)
+   ![alt text](lab2_resource/测试1_basic.png)
   **2. 边界情况测试：**
 
    重点测试系统在极端输入下的稳定性，包括INT_MAX、INT_MIN等数值边界，空指针、空字符串等异常输入，以及未知格式符的错误恢复能力。  
    输出结果如下图：
-   ![alt text](测试2_edge.png)
+   ![alt text](lab2_resource/测试2_edge.png)
   **3. 颜色输出测试：**
 
    验证ANSI颜色转义序列的实现效果，测试8种基本颜色在终端中的实际显示效果，验证颜色设置和重置功能是否正常。  
    输出结果如下图，所有颜色正确显示：
-   ![alt text](测试3_color.png)
+   ![alt text](lab2_resource/测试3_color.png)
   **4. 光标控制测试：**
 
    测试光标控制功能的准确性，验证goto_xy函数能否精确定位到指定行列位置，检查坐标计算的正确性。  
    输出结果如下图，光标精确定位到第7行开头显示绿色标记线，随后定位到第9行第10列显示蓝色标记，定位准确无偏差。
-   ![alt text](测试4_cursor.png)
+   ![alt text](lab2_resource/测试4_cursor.png)
   **5. 清屏清行测试：**
 
    由于每一轮测试展示时，都调用了`clean_screen()`函数，进行一次清屏，因此这里不再对清屏功能单独测试，这里重点测试清行功能。  
    * 首先显示测试内容后提示用户"按回车键清除"，如下图：
-   ![alt text](测试5-1_clearline.png)
+   ![alt text](lab2_resource/测试5-1_clearline.png)
    * 待用户按键后特定行内容被精确清除而其他行保留，演示动态界面更新效果。效果如下：
-   ![alt text](测试5-2_clearline.png)
+   ![alt text](lab2_resource/测试5-2_clearline.png)
 
 ---
 ## 3 所遇问题与解决

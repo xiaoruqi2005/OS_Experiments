@@ -55,7 +55,7 @@ __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 #### 2.2.1 实验原理与设计
 * **RISC-V启动流程图：**
   参照xv6的启动设计，绘制的简化启动流程图如下：
-![alt text](设计流程图(1).png)
+  ![alt text](lab1_resource/设计流程图(1).png)
 * **内存布局设计：**
 ```
 0x80000000 +-----------------+
@@ -370,7 +370,7 @@ clean:
 * **编译及运行结果**
 终端输入`make`指令进行编译，之后输入`make run`运行，屏幕成功显示：`This is lab1！ Hello！`并提示`Type something`允许用户输入字符实时回显。
 运行截图如下：
-![alt text](lab1截图.png)
+![alt text](lab1_resource/lab1截图.png)
 * **功能验证**
 - 内核成功从0x80000000启动
 - BSS段正确清零
