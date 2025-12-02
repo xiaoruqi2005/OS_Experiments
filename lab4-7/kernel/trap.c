@@ -126,7 +126,43 @@ void kerneltrap(uint64 sp_val) {
         regs->a0 = p->trapframe->a0;
     } 
     else {
-        printf("kerneltrap: exception scause %p, sepc %p, stval %p\n", scause, sepc, r_stval());
-        while(1);
+        // printf("kerneltrap: exception scause %p, sepc %p, stval %p\n", scause, sepc, r_stval());
+        // while(1);
+
+        // === 修改开始：在此处添加 Lab4 要求的异常处理 ===
+        
+        uint64 exception_code = scause; // 获取异常原因
+        
+        // 打印信息，方便调试
+        printf("kerneltrap: captured exception scause=%d (sepc=%p)\n", exception_code, sepc);
+
+        switch (exception_code) {
+            case 2: // 非法指令异常 (Illegal Instruction)
+                printf("  [Handler] Illegal Instruction caught.\n");
+                // 跳过当前指令 (假设是4字节指令)
+                w_sepc(sepc + 4);
+                break;
+
+            case 12: // 指令页故障 (Instruction Page Fault)
+                printf("  [Handler] Instruction Page Fault caught.\n");
+                w_sepc(sepc + 4);
+                break;
+
+            case 13: // 加载页故障 (Load Page Fault) - 对应读取 0x0
+                printf("  [Handler] Load Page Fault caught.\n");
+                w_sepc(sepc + 4);
+                break;
+
+            case 15: // 存储页故障 (Store Page Fault) - 对应写入 0x0
+                printf("  [Handler] Store Page Fault caught.\n");
+                w_sepc(sepc + 4);
+                break;
+
+            default:
+                // 对于未知的其他异常，依然保持 Panic
+                printf("kerneltrap: FATAL - unexpected exception scause %p, sepc %p, stval %p\n", 
+                       scause, sepc, r_stval());
+                while(1);
+        }
     }
 }

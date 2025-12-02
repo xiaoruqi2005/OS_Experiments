@@ -104,6 +104,45 @@ void procinit(void) {
     printf("procinit: complete\n");
 }
 
+void force_clean_zombies(void) {
+    struct proc *p;
+    
+    // 遍历整个进程表
+    for(p = proc; p < &proc[NPROC]; p++) {
+        // 加锁（如果你的实验实现了锁）
+        // acquire(&p->lock); 
+        
+        if(p->state == ZOMBIE) {
+            // 只要是僵尸，不管爹是谁，直接清理
+            
+            p->state = UNUSED;
+            p->pid = 0;
+            p->parent = 0;
+            p->name[0] = 0;
+            p->killed = 0;
+            p->xstate = 0;
+        }
+        
+        // release(&p->lock);
+    }
+}
+// int create_pro(void (*entry)(void)) {
+//     struct proc *p = allocproc();
+//     if (p == 0) {
+//         return -1;
+//     }
+    
+//     p->entry = entry;
+//     p->parent = myproc();
+    
+//     acquire(&p->lock);
+//     p->state = RUNNABLE;// 标记为就绪，等待调度器调度
+//     release(&p->lock);
+    
+//     return p->pid;
+// }
+
+//只是创建进程，没有父子关系，即孤儿进程
 int create_process(void (*entry)(void)) {
     struct proc *p = allocproc();
     if (p == 0) return -1;

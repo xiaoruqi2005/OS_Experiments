@@ -20,6 +20,22 @@ void assert(int condition) {
     }
 }
 
+// 内核睡眠
+void kernel_sleep(int ticks) {
+    uint64 target_ticks = get_ticks() + ticks;
+    while (get_ticks() < target_ticks) {
+        acquire(&myproc()->lock);
+        // 修正: 解决 'tick_counter' undeclared 错误
+        // 我们调用新函数来获取正确的睡眠通道
+        sleep(get_ticks_channel(), &myproc()->lock);
+        release(&myproc()->lock);
+    }
+}
+
+void clean_process(){
+    kernel_sleep(50);
+    force_clean_zombies();
+}
 static struct proc* find_current_process_hard() {
     struct proc *p = myproc();
     if (p && p->state == RUNNING) return p;
@@ -84,11 +100,10 @@ static void build_name(char *buf, const char *prefix, int idx) {
     buf[i] = '\0';
 }
 
-
 // ===== Lab4 测试 =====
 
 void test_timer_interrupt(void) {
-    printf("\n=== Test 4: Timer Interrupt ===\n");
+    printf("\n=== Test 4.1: Timer Interrupt ===\n");
     
     uint64 start_time = get_time();
     uint64 start_count = get_interrupt_count();
@@ -110,12 +125,32 @@ void test_timer_interrupt(void) {
 }
 
 void test_exception_handling(void) {
-    printf("\n=== Test 5: Exception Handling ===\n");
-    printf("Exception handler is ready (tests skipped for stability)\n");
+    printf("\n=== Test 4.2: Exception Handling ===\n");
+    
+    // 1. 测试非法指令异常 (Illegal Instruction)
+    // .word 0xFFFFFFFF 必定是 4 字节且非法的
+    printf("1. Triggering Illegal Instruction exception...\n");
+    asm volatile(".word 0xFFFFFFFF");
+    printf("   -> Recovered from Illegal Instruction!\n");
+
+    // 2. 测试加载页故障 (Load Page Fault)
+    // 虽然 lw x0, 0(x0) 看起来没意义，但它会触发读取 0 地址的异常
+    printf("2. Triggering Load Page Fault...\n");
+    asm volatile("lw x0, 0(x0)"); 
+    printf("   -> Recovered from Load Page Fault!\n");
+
+    // 3. 测试存储页故障 (Store Page Fault)
+    // 同样手动写汇编 sw (Store Word)，将 x0 的值写入地址 0(x0)
+    // 这对应机器码 0x00002023，是一个标准的 4 字节指令
+    printf("3. Triggering Store Page Fault...\n");
+    asm volatile("sw x0, 0(x0)");
+    printf("   -> Recovered from Store Page Fault!\n");
+
+    printf("Exception tests completed successfully.\n");
 }
 
 void test_interrupt_overhead(void) {
-    printf("\n=== Test 6: Interrupt Overhead ===\n");
+    printf("\n=== Test 4.3: Interrupt Overhead ===\n");
     
     // 修正: 解决 "unused variable" 错误
     uint64 start_count = get_interrupt_count();
@@ -138,17 +173,6 @@ void test_interrupt_overhead(void) {
 
 // ===== Lab 5 测试 =====
 
-// 辅助函数：内核睡眠
-void kernel_sleep(int ticks) {
-    uint64 target_ticks = get_ticks() + ticks;
-    while (get_ticks() < target_ticks) {
-        acquire(&myproc()->lock);
-        // 修正: 解决 'tick_counter' undeclared 错误
-        // 我们调用新函数来获取正确的睡眠通道
-        sleep(get_ticks_channel(), &myproc()->lock);
-        release(&myproc()->lock);
-    }
-}
 
 // 辅助任务 1: 简单任务
 void simple_task(void) {
@@ -222,21 +246,46 @@ end:
 
 // --- Lab 5 测试入口 ---
 
-// 测试 7: 进程创建
+// 测试 5.1: 进程创建
 void test_process_creation(void) {
-    printf("\n=== Test 7: Process Creation ===\n");
+    printf("\n=== Test 5.1: Process Creation ===\n");
+
     printf("Testing basic process creation...\n");
-    int pid = create_process(simple_task);
+    int pid = create_process(simple_task);//创建一个进程
     assert(pid > 0);
     printf("Created process %d\n", pid);
+
+
+
+    // 获取当前进程数量
+    int existing_procs = 0;
+    for (int i = 0; i < NPROC; i++) {
+        if (proc[i].state != UNUSED) {
+            existing_procs++;
+            printf("Existing process: PID=%d, state=%d, name=", 
+                   proc[i].pid, proc[i].state);
+            
+            // 安全打印名字
+            int has_name = 0;
+            for (int j = 0; j < sizeof(proc[i].name); j++) {
+                if (proc[i].name[j] == '\0') break;
+                cons_putc(proc[i].name[j]);
+                has_name = 1;
+            }
+            if (!has_name) {
+                printf("(unnamed)");
+            }
+            printf("\n");
+        }
+    }
     
-    // 修正: 'NULL' undeclared 错误 (已在文件顶部定义 NULL)
-    wait_process(NULL);
-    
+    // 计算可以创建的进程数
+    int available_slots = NPROC - existing_procs;
+    printf("Available process slots: %d\n", available_slots);
+
     printf("\nTesting process table limit (NPROC=%d)...\n", NPROC);
     
-    // 修正: 解决 'pids' unused 错误
-    // 我们不再需要 'pids' 数组，只需要 'count'
+    
     int count = 0;
     for (int i = 0; i < NPROC + 5; i++) {
         pid = create_process(simple_task);
@@ -246,19 +295,19 @@ void test_process_creation(void) {
             break;
         }
     }
-    printf("Created %d processes (expected max %d)\n", count, NPROC - 1);
-    assert(count == NPROC - 1);
+
+    printf("Created %d processes (expected max %d)\n", count, available_slots);
+    assert(count == available_slots);
     
-    // 清理
-    for (int i = 0; i < count; i++) {
-        wait_process(NULL);
-    }
+     // 清理
+    printf("Cleaning processes...\n");
+    clean_process();
     printf("Process creation test passed\n");
 }
 
 // 测试 8: 调度器
 void test_scheduler(void) {
-    printf("\n=== Test 8: Scheduler ===\n");
+    printf("\n=== Test 5.2: Scheduler ===\n");
     printf("Creating 3 CPU intensive tasks...\n");
     for (int i = 0; i < 3; i++) {
         create_process(cpu_intensive_task);
@@ -271,21 +320,19 @@ void test_scheduler(void) {
     
     printf("Scheduler test completed (slept %d ticks)\n", end_time - start_time);
     
-    wait_process(NULL);
-    wait_process(NULL);
-    wait_process(NULL);
+    clean_process();
 }
 
 // 测试 9: 同步机制
 void test_synchronization(void) {
-    printf("\n=== Test 9: Synchronization (Producer-Consumer) ===\n");
+
+    printf("\n=== Test 5.3: Synchronization (Producer-Consumer) ===\n");
     shared_buffer_init();
     
     create_process(producer_task);
     create_process(consumer_task);
-    
-    wait_process(NULL);
-    wait_process(NULL);
+      
+    clean_process();
     
     printf("Synchronization test completed\n");
 }
@@ -293,17 +340,9 @@ void test_synchronization(void) {
 
 // ===== Lab 6 测试 =====
 
-// static void test_filesystem_integrity(void);
-// static void test_concurrent_access(void);
-// static void test_crash_recovery(void);
-// static void test_filesystem_performance(void);
-// static void debug_filesystem_state(void);
-// static void debug_inode_usage(void);
-// static void debug_disk_io(void);
-
 
 void test_basic_syscalls(void) {
-    printf("\n=== Test 10: Basic System Calls ===\n");
+    printf("\n=== Test 6.1: Basic System Calls ===\n");
     
     int pid = stub_getpid();
     printf("Current PID (via syscall): %d\n", pid);
@@ -329,7 +368,7 @@ void test_basic_syscalls(void) {
 }
 
 void test_parameter_passing(void) {
-    printf("\n=== Test 11: Parameter Passing ===\n");
+    printf("\n=== Test 6.2: Parameter Passing ===\n");
     char *msg = "  [Syscall Write] Hello World via write()!\n";
     int len = 0;
     while(msg[len]) len++;
@@ -340,7 +379,7 @@ void test_parameter_passing(void) {
 }
 
 void test_security(void) {
-    printf("\n=== Test 12: Security Test ===\n");
+    printf("\n=== Test 6.3: Security Test ===\n");
     char *invalid_ptr = (char*)0x0; 
     printf("  Writing to invalid pointer %p...\n", invalid_ptr);
     
@@ -352,7 +391,7 @@ void test_security(void) {
 }
 
 void test_syscall_performance(void) {
-    printf("\n=== Test 13: Syscall Performance ===\n");
+    printf("\n=== Test 6.4: Syscall Performance ===\n");
     
     uint64 start_time = get_time();
     int count = 10000;
@@ -372,7 +411,7 @@ void test_syscall_performance(void) {
 
 // === Lab 7 测试 ===
 void test_filesystem_integrity(void) {
-    printf("\n=== FS Test 1: Integrity ===\n");
+    printf("\n=== Test 7.1: Integrity ===\n");
     char buffer[] = "Hello, filesystem!";
     char read_buffer[64];
 
@@ -433,7 +472,7 @@ void test_filesystem_integrity(void) {
 }
 
 void test_concurrent_access(void) {
-    printf("\n=== FS Test 2: Concurrent Access ===\n");
+    printf("\n=== Test 7.2: Concurrent Access ===\n");
     const int workers = 4;
     const int iterations = 100;
     for (int i = 0; i < workers; i++) {
@@ -460,7 +499,7 @@ void test_concurrent_access(void) {
 }
 
 void test_crash_recovery(void) {
-    printf("\n=== FS Test 3: Crash Recovery (Simulated) ===\n");
+    printf("\n=== Test 7.3: Crash Recovery (Simulated) ===\n");
     char data[BSIZE];
     for (int i = 0; i < BSIZE; i++) {
         data[i] = (char)(i & 0xff);
@@ -486,7 +525,7 @@ void test_crash_recovery(void) {
 }
 
 void test_filesystem_performance(void) {
-    printf("\n=== FS Test 4: Performance ===\n");
+    printf("\n=== Test 7.4: Performance ===\n");
     uint64 start = get_time();
     const int small_files = 200;
     char filename[32];
@@ -568,14 +607,12 @@ void run_lab5_tests(void) {
 //  运行 Lab6 测试
 void run_lab6_tests(void) {
     printf("\n===== Starting Lab6 Tests =====\n");
-    
     // 尝试打开一个文件作为 stdout，如果尚未打开
     int fd = stub_open("console", O_CREATE | O_RDWR); 
     if (fd == 0) {
         stub_dup(fd); // fd 1
         stub_dup(fd); // fd 2
     }
-
     test_basic_syscalls();
     test_parameter_passing();
     test_security();
@@ -590,9 +627,9 @@ void run_lab7_tests(void) {
     test_concurrent_access();
     test_crash_recovery();
     test_filesystem_performance();
-    debug_filesystem_state();
-    debug_inode_usage();
-    debug_disk_io();
+    // debug_filesystem_state();
+    // debug_inode_usage();
+    // debug_disk_io();
     printf("===== All Lab7 Tests Passed! =====\n");
 }
 

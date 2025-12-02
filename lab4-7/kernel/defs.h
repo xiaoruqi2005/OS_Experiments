@@ -57,6 +57,7 @@ void scheduler(void) __attribute__((noreturn));
 struct proc* myproc(void);
 struct cpu* mycpu(void);
 void wait_process(int*);
+void force_clean_zombies(void);
 
 // [修复] 必须在这里声明调试接口，test.c 才能看见它
 struct proc* get_current_proc_debug(void); 

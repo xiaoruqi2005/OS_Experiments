@@ -3,7 +3,7 @@
 #include "riscv.h"
 
 void main_task(void) {
-    printf("===== main_task Started (PID %d) =====\n", myproc()->pid);
+    printf("\n===== Test_task Started (PID %d) =====\n", myproc()->pid);
     run_lab4_tests();
     run_lab5_tests();
     run_lab6_tests();
@@ -14,7 +14,7 @@ void main_task(void) {
 
 void kmain(void) {
     clear_screen();
-    printf("===== Kernel Booting =====\n");
+    printf("\n===== Kernel Booting =====\n");
     kinit();
     kvminit();
     kvminithart();
